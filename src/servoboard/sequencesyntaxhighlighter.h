@@ -3,10 +3,16 @@
 
 #include <QSyntaxHighlighter>
 #include "position.h"
-/**
- * This only highlights the comments in a sequence and leaves the rest untouched.
- * It is used when the sequence is being played back as it allows for the default
- * "pointer" highlighing to occur and then the comments are made green on top of that.
+/*!
+ * \class SequenceSyntaxHighlighter
+ *
+ * \brief Highlights only the comments in a user visible sequence string
+ *      leaviing the rest of the string untouched.
+ *
+ * This only highlights the comments in a sequence and leaves the rest
+ * untouched. It is used when the sequence is being played back as it allows
+ * for the default "pointer" highlighing to occur and then the comments are
+ * made green on top of that.
  */
 class SequenceSyntaxHighlighter : public QSyntaxHighlighter
 {

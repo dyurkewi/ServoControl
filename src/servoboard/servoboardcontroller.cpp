@@ -328,7 +328,17 @@ void ServoboardController::setStartPosition(Position *p)
         view->displaySetStartFailure();
         return;
     }
-    this->port->write(displayedData->getStartPositionCommand());
+    QByteArray toWrite = displayedData->getStartPositionCommand();
+    qint64 bytesWritten = this->port->write(toWrite);
+    qDebug() << "Bytes written: " << bytesWritten;
+    if (bytesWritten != toWrite.length())
+    {
+        qDebug() << "Not all bytes written to get the serial port in "
+                 << "ServoboardController::setStartPosition(Position* p): "
+                 << bytesWritten << " bytes written, " << toWrite.length()
+                 << "expected.";
+        return;
+    }
     //Confirm start state burnt in memory.
     view->displayBurnSuccess();
     emit this->newPositionSent(p);
@@ -348,7 +358,17 @@ void ServoboardController::burnStartPosition()
         view->displaySetStartFailure();
         return;
     }
-    this->port->write(displayedData->getStartPositionCommand());
+    QByteArray toWrite = displayedData->getStartPositionCommand();
+    qint64 bytesWritten = this->port->write(toWrite);
+    qDebug() << "Bytes written: " << bytesWritten;
+    if (bytesWritten != toWrite.length())
+    {
+        qDebug() << "Not all bytes written to get the serial port in "
+                 << "ServoboardController::setStartPosition(Position* p): "
+                 << bytesWritten << " bytes written, " << toWrite.length()
+                 << "expected.";
+        return;
+    }
     //Confirm start state burnt in memory.
     view->displayBurnSuccess();
     emit this->newPositionSent(displayedData->getStartPosition());
@@ -376,7 +396,7 @@ void ServoboardController::resetAfterPlayback()
 bool ServoboardController::checkForChangesToTextSequence()
 {
     if (!view->hasSequenceChanged()||
-        !view->hasSequenceInText())//see if there are changes
+        (!view->hasSequenceInText() && displayedData->isEmpty()))//see if there are changes
     {
         return true;
     }
@@ -397,6 +417,11 @@ bool ServoboardController::checkForChangesToTextSequence()
             {
                 qDebug() << tr("Failed to diplay sequence");
             }
+            return true;
+        }
+        else if (view->currentSequenceText().isEmpty())
+        {
+            displayedData->clearStoredPositions();
             return true;
         }
         else

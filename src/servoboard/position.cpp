@@ -30,18 +30,29 @@ void Position::init()
 
 /*Public Methods*/
 
-/*! @todo Do we want to reinitalize to default state on an invalid input,
+/*! \todo Do we want to reinitalize to default state on an invalid input,
 	or leave in an undetermined state? */
 
-/** Reads and stores the data from a string into the object.
- * will return false and print a log message if there is an
- * error, unless it is passed an emtpy string, in which case
- * it will return true, but m_hasData wil be false
+/*! \brief Reads and stores the data from a string into the object.
+ *
+ * It will return false and print a log message if there is an
+ * error.
+ * \param input
+ *     A position string from a file or the user display that will be
+ *     used to initalize the position.
+ *
  * \return false if there is an error, true if no error or null string passed
  */
 bool Position::fromString(QString input)
 {
     //Read if there is a freeze on the line or not
+    if (input.length() < 4)
+    {
+        qDebug() << "Error: parsing line: line length is too small "
+                     << "Position::fromString(QString input)" <<
+                    " line: " << __LINE__;
+        return false;
+    }
     if(input.startsWith("*"))
     {
         m_isFreeze = false;
@@ -59,7 +70,7 @@ bool Position::fromString(QString input)
     {
         qDebug () << input;
         qDebug() << "Error: parsing in line starting character position: " <<
-                    input.at(1) << " in " << "Position::fromString(QString input)" <<
+                    input.at(0) << " in " << "Position::fromString(QString input)" <<
                     " line: " << __LINE__;
         return false;//Doesn't start with the correct symbol
     }
@@ -105,15 +116,16 @@ bool Position::fromString(QString input)
     return true;
 }
 
-/**
- * This writes the position to string that can be understood by the
- * user and read by fromString. The legacy mode flag is used for writing
- * to files that can be used by the older version of the program.
+/*!
+ * \brief This writes the position to string that can be understood by the
+ * user and read by fromString.
+ * The legacy mode flag is used for writing to files that can be used by the
+ * older version of the program.
  * 
  * This should be the inverse of fromString assuming the legacy mode
  * flag is set to false.
  *
- * @return The position as a string
+ * \return The position as a string
  * \param legacyMode If true, returns the string in the Legacy Format
  */
 QString Position::toString(bool legacyMode)
@@ -147,6 +159,10 @@ QString Position::toString(bool legacyMode)
 
 }
 /**
+ *
+ *   \brief This is only contains only up to 12 servo addresses and value pairs,
+ *	       and freeze/unfreeze commands.
+ *
  * This returns the data in the position object as a series of bytes encoded
  * to be sent to the board.
  * 
@@ -157,6 +173,8 @@ QString Position::toString(bool legacyMode)
  * 
  * If there is freeze data then the freeze command is predended to the return
  * value and the resume motion value is appended to it.
+ *
+ * \return A null terminated byte array that can be sent directly to the board.
  */
 QByteArray Position::toServoSerialData()
 {
@@ -190,12 +208,16 @@ QByteArray Position::toServoSerialData()
     return result;
 }
 /**
- * This returns the two byte command to be send if there is data to be sent.
+ * \brief This returns the two byte command to be send if there is data to be sent.
  * If there is no data to be sent, okay is made false and an empty array is returned.
+ *
+ * \param okay
+ *    Returns with false if the data returned is an empty array, if the data returned
+ *    in the array is valid, it will return true.
  * 
- * The two bytes returned are:
- * Address: 158
- * Data: 0AAA BBBB where AAA is the sweep key (index) and BBBB is the repeat
+ * \return The two bytes returned are:
+ *           Address: 158
+ *           Data: 0AAA BBBB where AAA is the sweep key (index) and BBBB is the repeat
  */
 QByteArray Position::getPWMSerialData(bool* okay)
 {
@@ -227,8 +249,12 @@ QByteArray Position::getPWMSerialData(bool* okay)
     return result;
 }
 /**
- * This returns true if there is PWM data that can be sent out to a postion,
+ * \brief This returns true if there is PWM data that can be sent out to a postion,
  * otherwise it returns false.
+ *
+ *  Make sure you check this before asking for the serial command,
+ *  otherwise you may get junk back. This is provided to enusure that there is both
+ *  sweep and repeat data available to be returned.
  */
 bool Position::hasPWMData()
 {
@@ -324,7 +350,10 @@ void Position::setFreeze(bool newFreeze)
     this->m_isFreeze = newFreeze;
 }
 /**
- * This shows if a freeze command is set for this position
+ * This returns the board number of the position. The board number is to be used
+ * in cases where there are more than one board sharing the same data line.
+ *
+ * \return The board number that the position will be addressed to.
  */
 int Position::getBoardNumber()
 {
@@ -346,8 +375,9 @@ bool Position::setBoardNumber(int boardNumber)
     return true;
 }
 /**
- * Checks if there has been data stored in this position. It does
- * not matter if there are positions or special functions.
+ * \brief Checks if there has been data stored in this position. It does
+ * not matter if there are positions or special functions, it will check all of
+ * them. It will not check if there is a freeze value stored, or the board number.
  * \return True if something is stored, returns false otherwise.
  */
 bool Position::isEmpty()
@@ -373,7 +403,7 @@ bool Position::isEmpty()
     return false;
 }
 /**
- * Gets the delay value associated with the position, if any.
+ * \brief Gets the delay value associated with the position, if any.
  * \return The stored delay value for this position, returns 0 if there is none.
  */
 int Position::getDelay()
@@ -397,12 +427,19 @@ bool Position::addServoPosition(quint8 servoNum, quint8 servoPosition)
     return this->addServoPosition(servoNum,servoPosition,t);
 }
 /**
- * This will add a new servo value to the positions. If the addition is successful
- * it will return true, otherwise it will return false.
+ * \brief This will add a new servo value to the positions.
+ * If the addition is successful it will return true, otherwise it will return
+ * false.
  *
  * If another value already exists for a given address, then it will be overwritten
  * and the overwrite parameter will be set to true. Otherwise overwrite will be set
  * to false.
+ * \param servoNum
+ *      This is the address of the servo that the position is for. It must fall
+ *      between 1 and 12.
+ * \param servoPosition
+ *      This is the position value that will be sent to the servo. It must fall
+ *      between 1 and 97 and
  */
 bool Position::addServoPosition(quint8 servoNum, quint8 servoPosition, bool &overwrite)
 {
@@ -430,11 +467,12 @@ bool Position::addServoPosition(quint8 servoNum, quint8 servoPosition, bool &ove
     return true;
 }
 /**
- * This returns true if there is data for a servo number servoNumber stored
- * and returns true if there is. If the servoNumber is out of range or there
+ * Checks if there is position data for the given servo address.
+ * If the servoNumber is out of range or there
  * is no data stored it returns false.
- * @param servoNumber The servo to check for data
- * @return True if there is data for the given servo number
+ *
+ * \param servoNumber The servo to check for data
+ * \return True if there is data for the given servo number
  */
 bool Position::hasPositonDataFor(int servoNumber)
 {
@@ -455,8 +493,8 @@ bool Position::hasPositonDataFor(int servoNumber)
  * Gets the position data for a given servo number.
  * If data is found it returns the value.
  * If there is no stored data, or the servoNumber is out of range it returns -1.
- * @param servoNumber The servo to get the data for
- * @return The position value for the given servo
+ * \param servoNumber The servo to get the data for
+ * \return The position value for the given servo
  */
 int Position::getPositionDataFor(int servoNumber)
 {

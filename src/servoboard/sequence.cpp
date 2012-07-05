@@ -19,8 +19,8 @@ Sequence::Sequence(QObject *parent) :
 {
     this->init();
 }
-/*Cleans up any memory, note that if there is a shared pointer to a
- *position it will will be invalid after this call, so don't do that.
+/*! Cleans up any memory, note that if there is a shared pointer to a
+ *  position it will will be invalid after this call, so don't do that.
  */
 Sequence::~Sequence()
 {
@@ -36,7 +36,7 @@ Sequence::~Sequence()
         delete m_startPosition;
     }
 }
-/*Set up the map to emulate the lookup tables on the device.*/
+/*! Set up the map to emulate the lookup tables on the device.*/
 void Sequence::init()
 {
     m_replayMap.insert(0,1);
@@ -51,9 +51,12 @@ void Sequence::init()
 
 /*Public Methods*/
 
-/*
+/*!
  *Gets the user visible string representation for the data stored.
  *The okay parameter tells if the string returned is valid.
+ * \param okay
+ *        Will be set true if the conversion succeeded.
+ * \return A user visible string with the positions and comments.
  */
 QString Sequence::toString(bool* okay)
 {
@@ -61,10 +64,14 @@ QString Sequence::toString(bool* okay)
 }
 
 
-/*
+/*!
  *Parses a user visible string and stores the results. It will
  *return true iff the string is successfully parsed and the sequence
  *is in a valid internal state.
+ * \param data
+ *      A user visible string (only positions and comments)
+ *      that will be used to intialize the object.
+ * \return True if the parsing of the string succeeded.
  */
 bool Sequence::fromString(QString data)
 {
@@ -120,19 +127,30 @@ bool Sequence::fromString(QString data)
     return true;
 
 }
-/*
- *This returns true if the data passed to it is a valid user visible sequence string
- *otherwise it will return false.
- *Nothing will ever be stored in the sequence and the internal state will not change.
+/*!
+ * This is used to check if a user visible string is valid. It will not store
+ * any of the data from the string. It can be used without changing the internal
+ * state of the object.
+ * \param data
+ *       This is a user visible string that will be checked for correct formatting.
+ * \return True is the string is valid, otherwise false.
  */
 bool Sequence::isVaild(QString data)//I hate the duplications, if you can find a better way, do it.
 {
+    if (data.isEmpty())
+    {
+        return false;
+    }
     QTextStream stream(&data,QIODevice::ReadOnly | QIODevice::Text);
     int lineNumber = 0;
     while(!stream.atEnd())
     {
         lineNumber++;
         QString line(stream.readLine());
+        if (line.isEmpty())
+        {
+            continue;
+        }
         if(line.startsWith('#'))//Comment line
         {
             continue;
@@ -158,13 +176,18 @@ bool Sequence::isVaild(QString data)//I hate the duplications, if you can find a
     return true;
 
 }
-/*
- *This will write the sequence to the give output file using the file strings. The
- *choice of to use legacy format is made based off the file name, if the extension is
- *.SER it will use  the legacy format. Otherwise the newer format will be used.
+/*!
+ * This will write the sequence to the give output file using the file strings. The
+ * choice of to use legacy format is made based off the file name, if the extension is
+ * .SER it will use  the legacy format. Otherwise the newer format will be used.
  *
- *It does not matter if the file is open when it is passed in, but it will be closed
- *when it is returned.
+ * It does not matter if the file is open when it is passed in, but it will be closed
+ * when it is returned.
+ * \param outputFile
+ *    This is the file that the sequence will be written to. It does not have to be open
+ *    when passed in, but it will be closed afterwards.
+ * \return True if the file successfully written to with the sequence data. If the file
+ *    is invalid or there is an issue with the state of the sequence it will return false.
  */
 bool Sequence::toFile(QFile &outputFile)
 {
@@ -198,26 +221,45 @@ bool Sequence::toFile(QFile &outputFile)
     outputFile.close();
     return true;
 }
-/*
- *This is a convience method for opening a file if only the file name is given by the calling
- *function
+/*!
+ * This is a simple overload for writing to a file if only the filename is known.
+ * It will handle opening and closing the file, as well as the writing to it.
+ * \param outputFileName
+ *      This must be a file name and path, complete with the file extension, where
+ *      the file will be written to. The extension given will be read to choose
+ *      which format will be written. The path can be either relative or absolute.
+ *      If the file doesn't exist it will be created.
+ * \return True if the sequence is successfully written to the file, false otherwise.
  */
 bool Sequence::toFile(QString outputFileName)
 {
     QFile output(outputFileName);
     return this->toFile(output);
 }
-/*
- *This is a convience function for opening a file if only the filename to read from is given.
+/*!
+ * This is a convience function for opening a file if only the filename to read from is given.
+ * It will handle the opening and closing of the file, as well as reading from it. The sequence
+ * will be initalized based on the information in the file. If the file is invalid, the sequence
+ * will be in an undetermined state.
+ * \param inputFileName
+ *      This must be a file name and path, complete with the file extension, where
+ *      the file will be written to. The extension given will be read to choose
+ *      which format it will be read as. The path can be either relative or absolute.
+ * \return True if the sequnce is successfully intialzed from the file, otherwise false.
  */
 bool Sequence::fromFile(QString inputFileName)
 {
     QFile f(inputFileName,this);
     return this->fromFile(f);
 }
-/*
- *This reads a file and stores the parsed values if they are valid. Returns true
- *if the file is successfully read and stored, otherwise returns false.
+/*!
+ * This reads a file and stores the parsed values if they are valid. The file
+ * will be opened if needed, but will always be returned closed. The sequence
+ * will be initalzed based on the information in the file if it is valid. If the
+ * file is invalid the sequence will be in an undetermined state.
+ * \param inputFile
+ *       The file that will be read from.
+ * \return True if the sequence is successfully initailzed from the file.
  */
 bool Sequence::fromFile(QFile &inputFile)
 {
@@ -239,27 +281,32 @@ bool Sequence::fromFile(QFile &inputFile)
     return true;
 
 }
-/*
- *This is used to add another position to the sequence at the end. There is no
+/*!
+ *This is used to add another position to the end of the sequence. There is no
  *copy made of the position being passed in and the memory will be released later
  *so do not delete the value passed in.
+ * \param newPosition
+ *       A pointer to the new position that is too be added to the end of the sequence.
  */
 void Sequence::addPosition(Position* newPosition)
 {
     this->m_positions.append(newPosition);//We need a copy constructor for positions.
     m_hasData = true;
 }
-/*
- *This resets the internal iterator back to the start for use with hasNext and getNext
- *functions.
+/*!
+ * This resets the internal iterator back to the start for use with hasNext and getNext
+ * functions.
  */
 void Sequence::resetIterator()
 {
     this->m_iterator = 0;
 }
-/*
- *This returns true if there is another position to be returned. This will not advance
- *the iterator and leaves the internal start unchanged.
+/*!
+ * This returns true if there is another position to be returned. This will not advance
+ * the iterator and leaves the internal state unchanged.
+ * \return True if there is another position available that can be returned from the
+ *      getNext functions. False if the iterator is at the end or there are no positions
+ *      stored.
  */
 bool Sequence::hasNext()
 {
@@ -269,10 +316,16 @@ bool Sequence::hasNext()
     }
     return true;
 }
-/*
- *This is used to set the delay between positions that will be used if there is no
- *delay in the position that is being read. This value will be written to the header
- *of any files that the sequence is saved to.
+/*!
+ * This is used to set the delay between positions that will be used if there is no
+ * delay in the position that is being read. This value will be written to the header
+ * of any files that the sequence is saved to. If the delay value is out of range, the
+ * state of the sequence will not be changed. When there is already a delay stored in
+ * the sequence it will be silently overwritten.
+ * \param delay
+ *    The new global delay value for the sequence. It must be less than 15.
+ * \return True if the new delay value is successfully stored, false if it is out of
+ *    range.
  */
 bool Sequence::setDelay(quint8 delay)
 {
@@ -284,10 +337,15 @@ bool Sequence::setDelay(quint8 delay)
     this->m_sequenceDelay = delay;
     return true;
 }
-/*
- *This sets the number of times that the sequence is repeated during playback. This
- *value will be written into the file header when the sequence is saved. The replay value
- *is the user visible value. (ie 200 not 7)
+/*!
+ * This sets the number of times that the sequence is repeated during playback. This
+ * value will be written into the file header when the sequence is saved. The
+ * replay value is the user visible value. (ie 200 not 7). If there is already
+ * a replay value set it will be silently overwritten.
+ * \param replay
+ *     The user visible replay value that is to be used as the new global replay.
+ * \return True if the replaty value is valid and successfully stored. False if
+ *     the value given is not a valid selection.
  */
 bool Sequence::setReplay(quint8 replay)
 {
@@ -299,18 +357,33 @@ bool Sequence::setReplay(quint8 replay)
     this->m_sequenceReplay = this->m_replayMap.key(replay);//Store the key, not the user visible
     return true;
 }
-/*
- *Returns the number of times that the sequence should be repeated when being played back.
- *If there is no value stored or an error occurs it will return 0.
+/*!
+ * Returns the number of times that the sequence should be repeated when being played back.
+ * If there is no value stored or an error occurs it will return 0. The global replay value
+ * can be set by reading from a file or using the setReplay function.
+ * \return The number of value of the global replay.
  */
 int Sequence::getRepeats()
 {
     return this->m_replayMap.value(this->m_sequenceReplay,0);
 }
-/*
- *This is used to set the sequence PWM values that will be used if a line doensn't specify
- *what values to use. It returns true iff both values are valid and are stored. If either
- *value is invalid the state will no be changed.
+/*!
+ * This is used to set the sequence PWM values that will be used if a line
+ * doensn't specify what values to use. It returns true iff both values are
+ * valid and are stored. If either value is invalid the state will no be
+ * changed. To turn off the sweep set the sweep value to 0, and it will be
+ * interpreted correctly by the board. If any value is out of range the state
+ * of the sequence will not be changed.
+ * \param repeat
+ *    The value that should be set as the global repeat. This is the index value,
+ *    not the user visible value that is expected. It must be between 0 and 7.
+ *    if there is already a value set it will be silently overwritten.
+ * \param sweep
+ *    The value should be set as the new global sweep value. This is should be
+ *    between 1 and 15 if a sweep is desired, otherwise it should be 0, which
+ *    is interpreted as a no sweep.
+ * \return True if the values are in range and stored. If either value is out
+ *    out range false.
  */
 bool Sequence::setPWMValues(quint8 repeat, quint8 sweep)
 {
@@ -328,10 +401,13 @@ bool Sequence::setPWMValues(quint8 repeat, quint8 sweep)
     this->m_PWMSweep = sweep;
     return true;
 }
-/*
- *This will return the delay of the position that the iterator is currently pointing to.
- *If there there is no delay for the position it will return the sequence delay, and if
- *none has been set it will return the default value (1).
+/*!
+ * This will return the delay of the position that the iterator is currently
+ * pointing to. If there there is no delay for the position it will return the
+ * sequence delay, and if none has been set it will return the default value
+ * (1).
+ * \return The delay between the current line and the next one to be played as
+ *     indicated by the internal iterator.
  */
 int Sequence::getNextDelay()
 {
@@ -350,16 +426,32 @@ int Sequence::getNextDelay()
         return this->m_sequenceDelay; //
     }
 }
-/*
- *This returns the serial data for for the next position in the sequence and if
- *needed a pointer to the position that was used. The freeze data will be included
- *along with the PWM values. If there is no PWM information for the poisition then
- *the global sequence values will be used, or failing that the PWM values will be
- *turned off.
+/**
+ * \brief This returns the serial data for for the next position in the
+ *    sequence and if needed a pointer to the position that was used.
  *
- *The position that is returned will have the memory automatically managed, deleting it
- *will cause the sequence to become in valid. If the position is needed for a longer time,
- *make a copy as the pointer will become invalid if the sequence is reinitialized at any time.
+ * This is used for the playing back of a sequence through the serial port
+ * and will return the data to be sent out, and advance the internal interator
+ * to the next position in the sequence. If there are no more positions
+ * to be played back it will return empty arrays until the iterator is reset.
+ *
+ * The freeze data will be included along with the PWM values. If there is no
+ * PWM information for the position then the global sequence values will be
+ * used, or failing that the PWM values will be turned off.
+ *
+ * The position that is returned will have the memory automatically managed,
+ * deleting it will cause the sequence to become invalid. If the position is
+ * needed for a longer time, make a copy as the pointer will become invalid if
+ * the sequence is reinitialized at any time.
+ *
+ * \param p
+ *    The position that the iterator was pointed to, and who data is being
+ *    returned. This is an optional parameter that can be used to get the
+ *    next positon, along with the data for use with different display options.
+ *
+ * \return A byte array that can be sent out the serial port, containing the
+ *    freeze information from the position, the sweep information and and
+ *    address-data pairs for any servos that will be moved.
  */
 QByteArray Sequence::getNextData(Position*& p)
 {
@@ -392,12 +484,29 @@ QByteArray Sequence::getNextData(Position*& p)
     retVal.append(this->m_positions.at(m_iterator++)->toServoSerialData());
     return retVal;
 }
-
+/*!
+ * Checks if the current sequence has had the starting position for it set,
+ * either from the loading of a file or by using setStartPostion.
+ *
+ * \return True if the sequence currently has a start position set, false
+ *     otherwise.
+ */
 bool Sequence::hasStartPosition()
 {
     return this->m_startPosition && this->m_hasStartPosition;
 }
-
+/*!
+ * If the current sequence has a start position set for it, this will return
+ * the command that can be sent to the board to set the start sequence for  it.
+ * Upon recieving the command the board should store the values, reset and move
+ * to the starting position.
+ *
+ * If there is not starting position set this will return empty arrays until
+ * one is set by loading from a file or using the setStartingPosition method.
+ *
+ * \return The command that can be used to burn the starting position in the
+ *     micro.
+ */
 QByteArray Sequence::getStartPositionCommand()
 {
     if (!this->hasStartPosition() && m_startPosition
@@ -416,10 +525,25 @@ QByteArray Sequence::getStartPositionCommand()
     retVal.append((char)00);
     retVal.append((char)159);//Store and reset micro
     retVal.append((char)13);
+    qDebug() << "Start Command: " << retVal.toHex();
     return retVal;
 
 }
-
+/*!
+ * This sets the starting position for this sequence. The starting position
+ * can be burned into the mirco so that everytime after lossing power the
+ * servos move to the starting position.
+ *
+ * The position must not have a delay or PWM sweep values. If the freeze value
+ * is not set to false, then it will be changed. The value that the pointer
+ * points to will be memory managed, and deleting it before the sequence is
+ * delete will cause for undefined behavious (SEGFAULT). If the function
+ * returns false, p will not be managed by this object and must be deleted by
+ * the calling function.
+ *
+ * \return True if the position is in the correct format and stored. False if
+ *     the position is not in the correct format.
+ */
 bool Sequence::setStartPosition(Position* p)
 {
     if (!p || p->hasPWMData() || p->getDelay())
@@ -437,10 +561,43 @@ bool Sequence::setStartPosition(Position* p)
     return true;
 
 }
-
+/*!
+ * Returns a pointer to the current start position. If no start position is
+ * set then the return pointer will not be valid. Check using hasStartPosition
+ * first before calling this function.
+ *
+ * The pointer will have its memory managed and does not need to be deleted.
+ * If the memory is released then it will result in undefined behaviour (but I
+ * am betting on a SEGFAULT).
+ *
+ * \return A pointer to the current starting position.
+ */
 Position* Sequence::getStartPosition()
 {
     return this->m_startPosition;
+}
+
+/*!
+ * Checks if the sequence currently has any positions or comments stored in it.
+ * It does not check for global values or starting positions, use the proprer
+ * individual methods for that.
+ *
+ * \return True if there are no positions or comments stored, false otherwise.
+ */
+bool Sequence::isEmpty()
+{
+    return this->m_positions.isEmpty() && this->m_comments.isEmpty();
+}
+/*!
+ * Clears out any stored positions or comments in the sequence. It leave the
+ * global values untouched as well as the starting position. Use the individual
+ * methods to clear those values.
+ */
+void Sequence::clearStoredPositions()
+{
+    this->m_positions.clear();
+    this->m_comments.clear();
+    this->m_hasData = false;
 }
 
 
